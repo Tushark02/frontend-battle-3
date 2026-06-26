@@ -32,7 +32,7 @@ const Icon = ({ name, size = 20, color = 'currentColor', style = {} }) => {
   )
 }
 
-// ── Custom Cursor Hook ────────────────────────────────────────
+// ── 1. Custom Glowing Cursor Component ────────────────────────
 function CustomCursor() {
   const [position, setPosition] = useState({ x: -100, y: -100 })
   const [hidden, setHidden] = useState(true)
@@ -57,48 +57,210 @@ function CustomCursor() {
   return (
     <div 
       className="cursor"
-      style={{
-        transform: `translate3d(${position.x - 10}px, ${position.y - 10}px, 0)`,
-      }}
+      style={{ transform: `translate3d(${position.x - 10}px, ${position.y - 10}px, 0)` }}
     />
   )
 }
 
-// ── Counter Hook for Stats ───────────────────────────────────
+// ── 2. Interactive Matrix Grid Backdrop ───────────────────────
+function MatrixBackdrop() {
+  const canvasRef = useRef(null)
+  const mouseRef = useRef({ x: -1000, y: -1000 })
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    let animationFrameId
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+
+    const handleMouseMove = (e) => {
+      mouseRef.current = { x: e.clientX, y: e.clientY }
+    }
+
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('mousemove', handleMouseMove)
+    handleResize()
+
+    const drawGrid = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      const spacing = 40
+      const dotSize = 1.5
+
+      for (let x = 0; x < canvas.width; x += spacing) {
+        for (let y = 0; y < canvas.height; y += spacing) {
+          const dx = mouseRef.current.x - x
+          const dy = mouseRef.current.y - y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          
+          ctx.beginPath()
+          if (dist < 120) {
+            // Light up dots close to cursor coordinates
+            ctx.arc(x, y, dotSize * 1.8, 0, Math.PI * 2)
+            ctx.fillStyle = `rgba(255, 200, 1, ${1 - dist / 120})`
+          } else {
+            ctx.arc(x, y, dotSize, 0, Math.PI * 2)
+            ctx.fillStyle = 'rgba(217, 232, 226, 0.07)'
+          }
+          ctx.fill()
+        }
+      }
+      animationFrameId = requestAnimationFrame(drawGrid)
+    }
+    drawGrid()
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('mousemove', handleMouseMove)
+      cancelAnimationFrame(animationFrameId)
+    }
+  }, [])
+
+  return <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }} />
+}
+
+// ── 3. Text Cipher Scramble Links ─────────────────────────────
+function CipherLink({ text, href }) {
+  const [displayText, setDisplayText] = useState(text)
+  const chars = '01XYZ/$#@'
+  const intervalRef = useRef(null)
+
+  const scramble = () => {
+    let iterations = 0
+    clearInterval(intervalRef.current)
+
+    intervalRef.current = setInterval(() => {
+      setDisplayText(() => 
+        text.split('').map((char, idx) => {
+          if (char === ' ') return ' '
+          if (idx < iterations) return text[idx]
+          return chars[Math.floor(Math.random() * chars.length)]
+        }).join('')
+      )
+
+      if (iterations >= text.length) clearInterval(intervalRef.current)
+      iterations += 1 / 2
+    }, 30)
+  }
+
+  const resetText = () => {
+    clearInterval(intervalRef.current)
+    setDisplayText(text)
+  }
+
+  return (
+    <a 
+      href={href} 
+      onMouseEnter={scramble}
+      onMouseLeave={resetText}
+      style={{ color: C.mint, fontFamily: 'JetBrains Mono, monospace', fontSize: 14, textDecoration: 'none', transition: 'color 150ms ease-out' }}
+    >
+      {displayText}
+    </a>
+  )
+}
+
+// ── 4. Interactive Terminal Sandbox ───────────────────────────
+function TerminalSandbox() {
+  const [history, setHistory] = useState([
+    'SYSTEM: NeuralFlow Node online v2.4.0',
+    'Type "help" to see available commands.',
+  ])
+  const [input, setInput] = useState('')
+  const terminalEndRef = useRef(null)
+
+  useEffect(() => {
+    terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [history])
+
+  const handleCommand = (e) => {
+    if (e.key !== 'Enter') return
+    const cmd = input.trim().toLowerCase()
+    if (!cmd) return
+
+    let response = [`$ ${input}`]
+
+    switch(cmd) {
+      case 'help':
+        response.push('Available nodes: "trigger", "status", "clear", "matrix"')
+        break
+      case 'trigger':
+        response.push('▶ Deploying 4 synthetic pipelines...', '✔ Graph deployed successfully via edge layer.')
+        break
+      case 'status':
+        response.push('● Cluster-Alpha: Operational', '● Latency: 14ms', '● Throughput: 14,240 tokens/sec')
+        break
+      case 'matrix':
+        response.push('Initializing system bypass...', '01010100 01010011 01000001')
+        break
+      case 'clear':
+        setHistory([])
+        setInput('')
+        return
+      default:
+        response.push(`command not found: ${cmd}. Try typing "help"`)
+    }
+
+    setHistory(prev => [...prev, ...response])
+    setInput('')
+  }
+
+  return (
+    <div className="hero-animate hero-animate-3" style={{ width: '100%', maxWidth: 500, background: 'rgba(13, 26, 31, 0.75)', border: `1px solid rgba(255,200,1,0.2)`, borderRadius: 12, boxShadow: '0 16px 40px rgba(0,0,0,0.5)', padding: 16, textAlign: 'left', fontFamily: 'JetBrains Mono, monospace', fontSize: 13, zIndex: 5, position: 'relative', backdropFilter: 'blur(8px)' }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 8 }}>
+        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#EF4444' }} />
+        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#F59E0B' }} />
+        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10B981' }} />
+        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginLeft: 8, transform: 'translateY(-2px)' }}>sandbox@neuralflow:~</span>
+      </div>
+      <div style={{ height: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, color: C.mint, marginBottom: 8, paddingRight: 4 }}>
+        {history.map((line, i) => (
+          <div key={i} style={{ color: line.startsWith('$') ? C.forsythia : line.startsWith('✔') ? '#10B981' : C.mint }}>{line}</div>
+        ))}
+        <div ref={terminalEndRef} />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 8 }}>
+        <span style={{ color: C.forsythia }}>$</span>
+        <input 
+          type="text" 
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleCommand}
+          style={{ background: 'transparent', border: 'none', outline: 'none', color: '#fff', width: '100%', fontFamily: 'JetBrains Mono, monospace', fontSize: 13, cursor: 'none' }}
+          placeholder="Type here..."
+        />
+      </div>
+    </div>
+  )
+}
+
+// ── 5. Stats Counters ─────────────────────────────────────────
 function AnimatedCounter({ target, suffix = '', decimals = 0 }) {
   const [count, setCount] = useState(0)
 
   useEffect(() => {
     let startTime = null
-    const duration = 1600 // Animation duration in milliseconds
+    const duration = 1600
 
     const animate = (timestamp) => {
       if (!startTime) startTime = timestamp
       const progress = Math.min((timestamp - startTime) / duration, 1)
-      
-      // Easing function outQuad
       const easeProgress = progress * (2 - progress)
-      const currentVal = easeProgress * target
+      setCount(easeProgress * target)
 
-      setCount(currentVal)
-
-      if (progress < 1) {
-        requestAnimationFrame(animate)
-      }
+      if (progress < 1) requestAnimationFrame(animate)
     }
 
     requestAnimationFrame(animate)
   }, [target])
 
-  return (
-    <span>
-      {count.toFixed(decimals)}
-      {suffix}
-    </span>
-  )
+  return <span>{count.toFixed(decimals)}{suffix}</span>
 }
 
-// ── Pricing matrix ────────────────────────────────────────────
+// ── Pricing Matrix Data & Calculations ─────────────────────────
 const PRICING_MATRIX = {
   tiers: [
     { id: 'starter', name: 'Starter', baseUSD: 29, features: ['5 Automations', '10k API calls/mo', 'Basic Analytics', 'Email Support'] },
@@ -121,7 +283,7 @@ function computePrice(baseUSD, currency, isAnnual) {
   return { symbol, value: rounded }
 }
 
-// ── Pricing section ───────────────────────────────────────────
+// ── Pricing Section with Glassmorphism ────────────────────────
 function PricingSection() {
   const [isAnnual, setIsAnnual] = useState(false)
   const [currency, setCurrency] = useState('USD')
@@ -148,20 +310,20 @@ function PricingSection() {
         {/* Controls */}
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, marginBottom: 48, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, backgroundColor: 'rgba(17, 76, 90, 0.6)', backdropFilter: 'blur(8px)', borderRadius: 40, padding: '6px 16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <span style={{ color: !isAnnual ? C.forsythia : C.mint, fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'color 180ms ease-out' }}
+            <span style={{ color: !isAnnual ? C.forsythia : C.mint, fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, cursor: 'none', transition: 'color 180ms ease-out' }}
               onClick={() => setIsAnnual(false)}>Monthly</span>
             <div onClick={() => setIsAnnual(v => !v)}
-              style={{ width: 44, height: 24, backgroundColor: isAnnual ? C.forsythia : '#ffffff30', borderRadius: 12, cursor: 'pointer', position: 'relative', transition: 'background 200ms ease-out' }}>
+              style={{ width: 44, height: 24, backgroundColor: isAnnual ? C.forsythia : '#ffffff30', borderRadius: 12, cursor: 'none', position: 'relative', transition: 'background 200ms ease-out' }}>
               <div style={{ width: 18, height: 18, backgroundColor: '#fff', borderRadius: '50%', position: 'absolute', top: 3, left: isAnnual ? 23 : 3, transition: 'left 200ms ease-out' }} />
             </div>
-            <span style={{ color: isAnnual ? C.forsythia : C.mint, fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'color 180ms ease-out' }}
+            <span style={{ color: isAnnual ? C.forsythia : C.mint, fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, cursor: 'none', transition: 'color 180ms ease-out' }}
               onClick={() => setIsAnnual(true)}>Annual <span style={{ color: C.saffron, fontSize: 11 }}>-20%</span></span>
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
             {Object.keys(PRICING_MATRIX.currencies).map(cur => (
               <button key={cur} onClick={() => setCurrency(cur)}
-                style={{ padding: '6px 16px', borderRadius: 20, border: 'none', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13, fontWeight: 600, transition: 'all 180ms ease-out',
+                style={{ padding: '6px 16px', borderRadius: 20, border: 'none', cursor: 'none', fontFamily: 'JetBrains Mono, monospace', fontSize: 13, fontWeight: 600, transition: 'all 180ms ease-out',
                   backgroundColor: currency === cur ? C.forsythia : 'rgba(255,255,255,0.08)',
                   color: currency === cur ? C.noir : C.mint }}>
                 {cur}
@@ -170,7 +332,7 @@ function PricingSection() {
           </div>
         </div>
 
-        {/* Tier cards with Glassmorphism */}
+        {/* Tier cards with Frost Glassmorphism */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
           {PRICING_MATRIX.tiers.map((tier, i) => {
             const { symbol, value } = computePrice(tier.baseUSD, currency, isAnnual)
@@ -211,7 +373,7 @@ function PricingSection() {
                     </li>
                   ))}
                 </ul>
-                <button style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 14, fontWeight: 700, transition: 'all 180ms ease-out',
+                <button style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', cursor: 'none', fontFamily: 'JetBrains Mono, monospace', fontSize: 14, fontWeight: 700, transition: 'all 180ms ease-out',
                   backgroundColor: i === 1 ? C.forsythia : 'rgba(255,255,255,0.1)',
                   color: i === 1 ? C.noir : '#fff' }}
                   onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
@@ -227,7 +389,7 @@ function PricingSection() {
   )
 }
 
-// ── Bento Grid / Accordion features ───────────────────────────
+// ── Bento Feature Layout ──────────────────────────────────────
 const FEATURES = [
   { icon: 'arrow-trending-up', title: 'Predictive Analytics', desc: 'ML models that forecast pipeline trends and surface revenue risks before they become problems.', span: 'col' },
   { icon: 'arrow-path',        title: 'Workflow Automation', desc: 'Connect any tool, trigger any action. Build complex multi-step automations with zero code.', span: 'row' },
@@ -254,7 +416,7 @@ function BentoAccordion() {
         {FEATURES.map((f, i) => (
           <div key={i} style={{ borderRadius: 14, overflow: 'hidden', border: `1px solid ${activeIndex === i ? C.forsythia : '#ffffff15'}`, transition: 'border-color 300ms ease-in-out' }}>
             <button onClick={() => setActiveIndex(activeIndex === i ? null : i)}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', backgroundColor: activeIndex === i ? C.teal : '#ffffff08', border: 'none', cursor: 'pointer', transition: 'background 300ms ease-in-out' }}>
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', backgroundColor: activeIndex === i ? C.teal : '#ffffff08', border: 'none', cursor: 'none', transition: 'background 300ms ease-in-out' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Icon name={f.icon} size={20} color={activeIndex === i ? C.forsythia : C.mint} />
                 <span style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 15, fontWeight: 600 }}>{f.title}</span>
@@ -296,14 +458,14 @@ function BentoAccordion() {
   )
 }
 
-// ── Social proof ──────────────────────────────────────────────
+// ── Social Proof Testimonials ─────────────────────────────────
 const TESTIMONIALS = [
   { name: 'Priya Sharma', role: 'CTO, Finstack', quote: 'NeuralFlow cut our data pipeline build time from 3 weeks to 2 days. The AI orchestration layer is genuinely magic.' },
   { name: 'Marcus Webb', role: 'VP Eng, Loopback', quote: 'We replaced 4 internal tools with NeuralFlow. Our team velocity is up 60% in the first quarter.' },
   { name: 'Aiko Tanaka', role: 'Data Lead, Synthex', quote: 'The predictive analytics surfaced a churn risk we would have missed entirely. Saved us ~$200k ARR.' },
 ]
 
-// ── Main App Component ────────────────────────────────────────
+// ── Main App Layout ───────────────────────────────────────────
 export default function App() {
   return (
     <>
@@ -314,13 +476,25 @@ export default function App() {
           box-sizing: border-box; 
           margin: 0; 
           padding: 0; 
-          cursor: none; /* Hide default hardware pointer system-wide */
+          cursor: none; 
         }
         
         html { scroll-behavior: smooth; }
-        body { background: ${C.noir}; overflow-x: hidden; }
+        body { background: ${C.noir}; overflow-x: hidden; position: relative; }
 
-        /* Custom Glowing Cursor Properties */
+        /* CRT Hardware Overlay FX */
+        body::before {
+          content: " ";
+          display: block;
+          position: fixed;
+          top: 0; left: 0; bottom: 0; right: 0;
+          background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+          z-index: 99999;
+          background-size: 100% 3px, 6px 100%;
+          pointer-events: none;
+        }
+
+        /* 1. Custom Pointer Element */
         .cursor {
           width: 20px;
           height: 20px;
@@ -328,13 +502,13 @@ export default function App() {
           border-radius: 50%;
           position: fixed;
           pointer-events: none;
-          z-index: 9999;
-          transition: transform 0.1s ease-out;
+          z-index: 999999;
+          transition: transform 0.08s ease-out;
           mix-blend-mode: difference;
           box-shadow: 0 0 20px #FFC801, 0 0 40px #FFC801;
         }
 
-        /* Animated Mesh Gradient Keyframes */
+        /* Dynamic Mesh Background Shifts */
         @keyframes gradientShift {
           0% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
@@ -342,12 +516,12 @@ export default function App() {
         }
 
         .animated-hero {
-          background: linear-gradient(-45deg, #172B36, #114C5A, #0d1a1f, #1d3d47);
+          background: linear-gradient(-45deg, #172B36, #114C5A, #0d1a1f, #1e3a42);
           background-size: 400% 400%;
           animation: gradientShift 15s ease infinite;
         }
 
-        /* Hero Text Entrance Animations */
+        /* Standard Entrances */
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(32px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -357,7 +531,7 @@ export default function App() {
         .hero-animate-2 { animation-delay: 180ms; }
         .hero-animate-3 { animation-delay: 280ms; }
 
-        /* Infinite Scrolling Marquee Animation */
+        /* Infinite Marquee Ribbon Loops */
         @keyframes marquee {
           0% { transform: translateX(0%); }
           100% { transform: translateX(-50%); }
@@ -371,6 +545,8 @@ export default function App() {
           white-space: nowrap;
           border-top: 1px solid rgba(0,0,0,0.1);
           border-bottom: 1px solid rgba(0,0,0,0.1);
+          position: relative;
+          z-index: 10;
         }
         .ticker-track {
           display: flex;
@@ -389,15 +565,15 @@ export default function App() {
           gap: 16px;
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 768px) {
           .nav-links { display: none !important; }
           .hero-title { font-size: clamp(32px, 8vw, 52px) !important; }
-          *, *::before, *::after { cursor: auto; } /* Restore cursor for mobile devices */
+          *, *::before, *::after { cursor: auto; }
           .cursor { display: none; }
+          body::before { display: none; }
         }
       `}</style>
 
-      {/* Render custom cursor element */}
       <CustomCursor />
 
       {/* ── NAVBAR ── */}
@@ -410,9 +586,7 @@ export default function App() {
           <ul className="nav-links" style={{ display: 'flex', gap: 32, listStyle: 'none' }}>
             {['Features', 'Pricing', 'Testimonials'].map(item => (
               <li key={item}>
-                <a href={`#${item.toLowerCase()}`} style={{ color: C.mint, fontFamily: 'Inter, sans-serif', fontSize: 14, textDecoration: 'none', transition: 'color 150ms ease-out' }}
-                  onMouseEnter={e => e.target.style.color = C.forsythia}
-                  onMouseLeave={e => e.target.style.color = C.mint}>{item}</a>
+                <CipherLink text={item} href={`#${item.toLowerCase()}`} />
               </li>
             ))}
           </ul>
@@ -427,19 +601,18 @@ export default function App() {
       </header>
 
       <main>
-        {/* ── HERO ── */}
-        <header id="hero" className="animated-hero" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '120px 24px 80px', position: 'relative', overflow: 'hidden' }}>
-          {/* Background overlay blending factors */}
-          <div style={{ position: 'absolute', width: 600, height: 600, borderRadius: '50%', background: `radial-gradient(circle, ${C.teal}30 0%, transparent 70%)`, top: '10%', left: '5%', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: `radial-gradient(circle, ${C.forsythia}15 0%, transparent 70%)`, bottom: '10%', right: '5%', pointerEvents: 'none' }} />
+        {/* ── HERO WITH INTERACTIVE BACKDROP & TERMINAL ── */}
+        <header id="hero" className="animated-hero" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '140px 24px 80px', position: 'relative', overflow: 'hidden' }}>
+          
+          <MatrixBackdrop />
 
-          <div className="hero-animate hero-animate-1" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, backgroundColor: 'rgba(17, 76, 90, 0.6)', backdropFilter: 'blur(4px)', borderRadius: 20, padding: '6px 16px', marginBottom: 28, border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="hero-animate hero-animate-1" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, backgroundColor: 'rgba(17, 76, 90, 0.6)', backdropFilter: 'blur(4px)', borderRadius: 20, padding: '6px 16px', marginBottom: 28, border: '1px solid rgba(255,255,255,0.05)', zIndex: 2 }}>
             <Icon name="arrow-trending-up" size={14} color={C.forsythia} />
             <span style={{ color: C.forsythia, fontFamily: 'JetBrains Mono, monospace', fontSize: 12, fontWeight: 600, letterSpacing: 1 }}>AI-POWERED DATA AUTOMATION</span>
           </div>
 
           <h1 className="hero-title hero-animate hero-animate-2"
-            style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(36px,6vw,72px)', fontWeight: 700, lineHeight: 1.1, maxWidth: 900, marginBottom: 24 }}>
+            style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(36px,5.5vw,64px)', fontWeight: 700, lineHeight: 1.15, maxWidth: 950, marginBottom: 24, zIndex: 2 }}>
             Automate Everything.<br />
             <span style={{ background: `linear-gradient(90deg, ${C.forsythia}, ${C.saffron})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               Move at Machine Speed.
@@ -447,24 +620,29 @@ export default function App() {
           </h1>
 
           <p className="hero-animate hero-animate-3"
-            style={{ color: C.mint, fontFamily: 'Inter, sans-serif', fontSize: 'clamp(16px,2vw,20px)', lineHeight: 1.7, maxWidth: 600, marginBottom: 48 }}>
+            style={{ color: C.mint, fontFamily: 'Inter, sans-serif', fontSize: 'clamp(16px,1.8vw,19px)', lineHeight: 1.7, maxWidth: 620, marginBottom: 40, zIndex: 2 }}>
             NeuralFlow is the AI automation platform that connects your data, tools, and workflows — so your team ships faster and your models work harder.
           </p>
 
-          <div className="hero-animate hero-animate-3" style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 80 }}>
-            <button style={{ padding: '16px 36px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${C.forsythia}, ${C.saffron})`, color: C.noir, fontFamily: 'JetBrains Mono, monospace', fontSize: 15, fontWeight: 700, cursor: 'none', transition: 'opacity 180ms ease-out' }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
-              Start Free Trial
-            </button>
-            <button style={{ padding: '16px 36px', borderRadius: 12, border: `1px solid #ffffff25`, backgroundColor: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(8px)', color: '#fff', fontFamily: 'Inter, sans-serif', fontSize: 15, cursor: 'none', transition: 'border-color 180ms ease-out' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = C.forsythia}
-              onMouseLeave={e => e.currentTarget.style.borderColor = '#ffffff25'}>
-              Watch Demo
-            </button>
+          {/* Interactive Core Layout Elements */}
+          <div style={{ display: 'flex', gap: 40, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: 1100, marginBottom: 64, zIndex: 2 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}>
+              <button style={{ padding: '16px 36px', width: 240, borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${C.forsythia}, ${C.saffron})`, color: C.noir, fontFamily: 'JetBrains Mono, monospace', fontSize: 15, fontWeight: 700, cursor: 'none', transition: 'opacity 180ms ease-out' }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+                Start Free Trial
+              </button>
+              <button style={{ padding: '16px 36px', width: 240, borderRadius: 12, border: `1px solid #ffffff25`, backgroundColor: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(8px)', color: '#fff', fontFamily: 'Inter, sans-serif', fontSize: 15, cursor: 'none', transition: 'border-color 180ms ease-out' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = C.forsythia}
+                onMouseLeave={e => e.currentTarget.style.borderColor = '#ffffff25'}>
+                Watch Demo
+              </button>
+            </div>
+
+            <TerminalSandbox />
           </div>
 
-          {/* Stats Row with Live Counter Animations */}
+          {/* Stats Row */}
           <div style={{ display: 'flex', gap: 48, flexWrap: 'wrap', justifyContent: 'center', position: 'relative', zIndex: 2 }}>
             {[
               { val: 500, suffix: 'M+', label: 'API calls daily' },
@@ -483,7 +661,7 @@ export default function App() {
           </div>
         </header>
 
-        {/* ── SCROLLING TICKER MARQUEE ── */}
+        {/* ── TICKER MARQUEE ── */}
         <div className="ticker-wrap">
           <div className="ticker-track">
             {[...Array(4)].map((_, outerIdx) => (
