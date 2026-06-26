@@ -32,7 +32,7 @@ const Icon = ({ name, size = 20, color = 'currentColor', style = {} }) => {
   )
 }
 
-// ── 1. Custom Glowing Cursor Component ────────────────────────
+// ── Custom Glowing Cursor Component ────────────────────────
 function CustomCursor() {
   const [position, setPosition] = useState({ x: -100, y: -100 })
   const [hidden, setHidden] = useState(true)
@@ -62,7 +62,7 @@ function CustomCursor() {
   )
 }
 
-// ── 2. Interactive Matrix Grid Backdrop ───────────────────────
+// ── Interactive Matrix Grid Backdrop ───────────────────────
 function MatrixBackdrop() {
   const canvasRef = useRef(null)
   const mouseRef = useRef({ x: -1000, y: -1000 })
@@ -98,7 +98,6 @@ function MatrixBackdrop() {
           
           ctx.beginPath()
           if (dist < 120) {
-            // Light up dots close to cursor coordinates
             ctx.arc(x, y, dotSize * 1.8, 0, Math.PI * 2)
             ctx.fillStyle = `rgba(255, 200, 1, ${1 - dist / 120})`
           } else {
@@ -122,7 +121,7 @@ function MatrixBackdrop() {
   return <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }} />
 }
 
-// ── 3. Text Cipher Scramble Links ─────────────────────────────
+// ── Text Cipher Scramble Links ─────────────────────────────
 function CipherLink({ text, href }) {
   const [displayText, setDisplayText] = useState(text)
   const chars = '01XYZ/$#@'
@@ -163,7 +162,7 @@ function CipherLink({ text, href }) {
   )
 }
 
-// ── 4. Interactive Terminal Sandbox ───────────────────────────
+// ── Interactive Terminal Sandbox ───────────────────────────
 function TerminalSandbox() {
   const [history, setHistory] = useState([
     'SYSTEM: NeuralFlow Node online v2.4.0',
@@ -237,7 +236,7 @@ function TerminalSandbox() {
   )
 }
 
-// ── 5. Stats Counters ─────────────────────────────────────────
+// ── Stats Counters ─────────────────────────────────────────
 function AnimatedCounter({ target, suffix = '', decimals = 0 }) {
   const [count, setCount] = useState(0)
 
@@ -260,7 +259,7 @@ function AnimatedCounter({ target, suffix = '', decimals = 0 }) {
   return <span>{count.toFixed(decimals)}{suffix}</span>
 }
 
-// ── Pricing Matrix Data & Calculations ─────────────────────────
+// ── Pricing Matrix Data ─────────────────────────────────────────
 const PRICING_MATRIX = {
   tiers: [
     { id: 'starter', name: 'Starter', baseUSD: 29, features: ['5 Automations', '10k API calls/mo', 'Basic Analytics', 'Email Support'] },
@@ -303,7 +302,11 @@ function PricingSection() {
     <section id="pricing" style={{ backgroundColor: C.noir, padding: '100px 24px', position: 'relative' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <p style={{ color: C.forsythia, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 12 }}>Pricing</p>
-        <h2 style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(28px,4vw,42px)', fontWeight: 700, textAlign: 'center', marginBottom: 48 }}>
+        <h2 
+          className="glitch-text"
+          data-text="Simple, Transparent Pricing"
+          style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(28px,4vw,42px)', fontWeight: 700, textAlign: 'center', marginBottom: 48 }}
+        >
           Simple, Transparent Pricing
         </h2>
 
@@ -494,7 +497,7 @@ export default function App() {
           pointer-events: none;
         }
 
-        /* 1. Custom Pointer Element */
+        /* Custom Pointer Element */
         .cursor {
           width: 20px;
           height: 20px;
@@ -565,12 +568,56 @@ export default function App() {
           gap: 16px;
         }
 
+        /* ── Glitch-On-Hover Keyframes ── */
+        @keyframes glitchSkew {
+          0% { transform: skew(0deg); }
+          20% { transform: skew(-3deg); }
+          40% { transform: skew(2deg); }
+          60% { transform: skew(-1deg); }
+          80% { transform: skew(4deg); }
+          100% { transform: skew(0deg); }
+        }
+
+        @keyframes glitchColor {
+          0% { text-shadow: 2px -1px 0 #FF9932, -2px 1px 0 #114C5A; }
+          25% { text-shadow: -2px 2px 0 #FFC801, 2px -2px 0 #114C5A; }
+          50% { text-shadow: 3px 1px 0 #FF9932, -3px -1px 0 #FFC801; }
+          75% { text-shadow: -1px -2px 0 #114C5A, 1px 2px 0 #FF9932; }
+          100% { text-shadow: 2px -1px 0 #FF9932, -2px 1px 0 #114C5A; }
+        }
+
+        .glitch-text {
+          position: relative;
+          transition: color 0.1s ease;
+        }
+
+        .glitch-text:hover {
+          animation: glitchSkew 0.3s steps(2) infinite, glitchColor 0.2s linear infinite;
+          color: #ffffff !important;
+        }
+
+        .glitch-text:hover::after {
+          content: attr(data-text);
+          position: absolute;
+          left: 2px;
+          top: -2px;
+          width: 100%;
+          height: 100%;
+          background: transparent;
+          color: #FFC801;
+          overflow: hidden;
+          clip-path: inset(35% 0 40% 0);
+          opacity: 0.7;
+        }
+
         @media (max-width: 768px) {
           .nav-links { display: none !important; }
           .hero-title { font-size: clamp(32px, 8vw, 52px) !important; }
           *, *::before, *::after { cursor: auto; }
           .cursor { display: none; }
           body::before { display: none; }
+          .glitch-text:hover { animation: none; text-shadow: none; }
+          .glitch-text:hover::after { display: none; }
         }
       `}</style>
 
@@ -601,7 +648,7 @@ export default function App() {
       </header>
 
       <main>
-        {/* ── HERO WITH INTERACTIVE BACKDROP & TERMINAL ── */}
+        {/* ── HERO ── */}
         <header id="hero" className="animated-hero" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '140px 24px 80px', position: 'relative', overflow: 'hidden' }}>
           
           <MatrixBackdrop />
@@ -614,7 +661,11 @@ export default function App() {
           <h1 className="hero-title hero-animate hero-animate-2"
             style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(36px,5.5vw,64px)', fontWeight: 700, lineHeight: 1.15, maxWidth: 950, marginBottom: 24, zIndex: 2 }}>
             Automate Everything.<br />
-            <span style={{ background: `linear-gradient(90deg, ${C.forsythia}, ${C.saffron})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <span 
+              className="glitch-text" 
+              data-text="Move at Machine Speed."
+              style={{ background: `linear-gradient(90deg, ${C.forsythia}, ${C.saffron})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'inline-block' }}
+            >
               Move at Machine Speed.
             </span>
           </h1>
@@ -624,7 +675,6 @@ export default function App() {
             NeuralFlow is the AI automation platform that connects your data, tools, and workflows — so your team ships faster and your models work harder.
           </p>
 
-          {/* Interactive Core Layout Elements */}
           <div style={{ display: 'flex', gap: 40, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: 1100, marginBottom: 64, zIndex: 2 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}>
               <button style={{ padding: '16px 36px', width: 240, borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${C.forsythia}, ${C.saffron})`, color: C.noir, fontFamily: 'JetBrains Mono, monospace', fontSize: 15, fontWeight: 700, cursor: 'none', transition: 'opacity 180ms ease-out' }}
@@ -679,7 +729,11 @@ export default function App() {
         <section id="features" style={{ backgroundColor: C.noir, padding: '100px 24px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <p style={{ color: C.forsythia, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 12 }}>Features</p>
-            <h2 style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(26px,4vw,42px)', fontWeight: 700, textAlign: 'center', marginBottom: 12 }}>
+            <h2 
+              className="glitch-text"
+              data-text="Built for Engineering Excellence"
+              style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(26px,4vw,42px)', fontWeight: 700, textAlign: 'center', marginBottom: 12 }}
+            >
               Built for Engineering Excellence
             </h2>
             <p style={{ color: C.mint, fontFamily: 'Inter, sans-serif', fontSize: 16, textAlign: 'center', maxWidth: 540, margin: '0 auto 56px' }}>
@@ -696,7 +750,11 @@ export default function App() {
         <section id="testimonials" style={{ backgroundColor: C.teal, padding: '100px 24px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <p style={{ color: C.forsythia, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 12 }}>Social Proof</p>
-            <h2 style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(26px,4vw,42px)', fontWeight: 700, textAlign: 'center', marginBottom: 56 }}>
+            <h2 
+              className="glitch-text"
+              data-text="Teams shipping faster with NeuralFlow"
+              style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(26px,4vw,42px)', fontWeight: 700, textAlign: 'center', marginBottom: 56 }}
+            >
               Teams shipping faster with NeuralFlow
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
