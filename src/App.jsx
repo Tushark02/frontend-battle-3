@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
- 
+
 // ── Color tokens ──────────────────────────────────────────────
 const C = {
   forsythia: '#FFC801',
@@ -9,8 +9,8 @@ const C = {
   arctic:    '#F1F6F4',
   mint:      '#D9E8E2',
 }
- 
-// ── SVG icons (inline, no external resources) ─────────────────
+
+// ── SVG icons ─────────────────────────────────────────────────
 const Icon = ({ name, size = 20, color = 'currentColor', style = {} }) => {
   const paths = {
     'arrow-path': <path fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>,
@@ -31,7 +31,73 @@ const Icon = ({ name, size = 20, color = 'currentColor', style = {} }) => {
     </svg>
   )
 }
- 
+
+// ── Custom Cursor Hook ────────────────────────────────────────
+function CustomCursor() {
+  const [position, setPosition] = useState({ x: -100, y: -100 })
+  const [hidden, setHidden] = useState(true)
+
+  useEffect(() => {
+    const handleMove = (e) => {
+      setPosition({ x: e.clientX, y: e.clientY })
+      if (hidden) setHidden(false)
+    }
+    const handleLeave = () => setHidden(true)
+    
+    window.addEventListener('mousemove', handleMove)
+    document.addEventListener('mouseleave', handleLeave)
+    return () => {
+      window.removeEventListener('mousemove', handleMove)
+      document.removeEventListener('mouseleave', handleLeave)
+    }
+  }, [hidden])
+
+  if (hidden) return null
+
+  return (
+    <div 
+      className="cursor"
+      style={{
+        transform: `translate3d(${position.x - 10}px, ${position.y - 10}px, 0)`,
+      }}
+    />
+  )
+}
+
+// ── Counter Hook for Stats ───────────────────────────────────
+function AnimatedCounter({ target, suffix = '', decimals = 0 }) {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    let startTime = null
+    const duration = 1600 // Animation duration in milliseconds
+
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp
+      const progress = Math.min((timestamp - startTime) / duration, 1)
+      
+      // Easing function outQuad
+      const easeProgress = progress * (2 - progress)
+      const currentVal = easeProgress * target
+
+      setCount(currentVal)
+
+      if (progress < 1) {
+        requestAnimationFrame(animate)
+      }
+    }
+
+    requestAnimationFrame(animate)
+  }, [target])
+
+  return (
+    <span>
+      {count.toFixed(decimals)}
+      {suffix}
+    </span>
+  )
+}
+
 // ── Pricing matrix ────────────────────────────────────────────
 const PRICING_MATRIX = {
   tiers: [
@@ -46,7 +112,7 @@ const PRICING_MATRIX = {
   },
   annualDiscount: 0.80,
 }
- 
+
 function computePrice(baseUSD, currency, isAnnual) {
   const { tariff, symbol } = PRICING_MATRIX.currencies[currency]
   const multiplier = isAnnual ? PRICING_MATRIX.annualDiscount : 1
@@ -54,15 +120,13 @@ function computePrice(baseUSD, currency, isAnnual) {
   const rounded = currency === 'INR' ? Math.round(raw) : raw.toFixed(2)
   return { symbol, value: rounded }
 }
- 
-// ── Pricing component — state isolated to text nodes ──────────
+
+// ── Pricing section ───────────────────────────────────────────
 function PricingSection() {
   const [isAnnual, setIsAnnual] = useState(false)
   const [currency, setCurrency] = useState('USD')
- 
-  // Refs to text nodes for isolated DOM updates (no global rerender)
   const priceRefs = useRef({})
- 
+
   useEffect(() => {
     PRICING_MATRIX.tiers.forEach(tier => {
       const ref = priceRefs.current[tier.id]
@@ -72,19 +136,18 @@ function PricingSection() {
       }
     })
   }, [isAnnual, currency])
- 
+
   return (
-    <section id="pricing" style={{ backgroundColor: C.noir, padding: '80px 24px' }}>
+    <section id="pricing" style={{ backgroundColor: C.noir, padding: '100px 24px', position: 'relative' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <p style={{ color: C.forsythia, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 12 }}>Pricing</p>
         <h2 style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(28px,4vw,42px)', fontWeight: 700, textAlign: 'center', marginBottom: 48 }}>
           Simple, Transparent Pricing
         </h2>
- 
+
         {/* Controls */}
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, marginBottom: 48, flexWrap: 'wrap' }}>
-          {/* Billing toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, backgroundColor: C.teal, borderRadius: 40, padding: '6px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, backgroundColor: 'rgba(17, 76, 90, 0.6)', backdropFilter: 'blur(8px)', borderRadius: 40, padding: '6px 16px', border: '1px solid rgba(255,255,255,0.05)' }}>
             <span style={{ color: !isAnnual ? C.forsythia : C.mint, fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'color 180ms ease-out' }}
               onClick={() => setIsAnnual(false)}>Monthly</span>
             <div onClick={() => setIsAnnual(v => !v)}
@@ -94,31 +157,44 @@ function PricingSection() {
             <span style={{ color: isAnnual ? C.forsythia : C.mint, fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'color 180ms ease-out' }}
               onClick={() => setIsAnnual(true)}>Annual <span style={{ color: C.saffron, fontSize: 11 }}>-20%</span></span>
           </div>
- 
-          {/* Currency selector */}
+
           <div style={{ display: 'flex', gap: 8 }}>
             {Object.keys(PRICING_MATRIX.currencies).map(cur => (
               <button key={cur} onClick={() => setCurrency(cur)}
                 style={{ padding: '6px 16px', borderRadius: 20, border: 'none', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13, fontWeight: 600, transition: 'all 180ms ease-out',
-                  backgroundColor: currency === cur ? C.forsythia : '#ffffff15',
+                  backgroundColor: currency === cur ? C.forsythia : 'rgba(255,255,255,0.08)',
                   color: currency === cur ? C.noir : C.mint }}>
                 {cur}
               </button>
             ))}
           </div>
         </div>
- 
-        {/* Tier cards */}
+
+        {/* Tier cards with Glassmorphism */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
           {PRICING_MATRIX.tiers.map((tier, i) => {
             const { symbol, value } = computePrice(tier.baseUSD, currency, isAnnual)
             return (
               <div key={tier.id}
-                style={{ backgroundColor: i === 1 ? C.teal : '#ffffff08', borderRadius: 20, padding: '36px 28px',
-                  border: i === 1 ? `2px solid ${C.forsythia}` : '1px solid #ffffff15',
-                  position: 'relative', transition: 'transform 300ms ease-in-out' }}
-                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-6px)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+                style={{ 
+                  backgroundColor: i === 1 ? 'rgba(17, 76, 90, 0.25)' : 'rgba(255, 255, 255, 0.03)', 
+                  backdropFilter: 'blur(16px)',
+                  WebkitBackdropFilter: 'blur(16px)',
+                  borderRadius: 20, 
+                  padding: '36px 28px',
+                  border: i === 1 ? `2px solid ${C.forsythia}` : '1px solid rgba(255, 255, 255, 0.08)',
+                  boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+                  position: 'relative', 
+                  transition: 'transform 300ms ease-in-out, box-shadow 300ms ease-in-out' 
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-6px)'
+                  e.currentTarget.style.boxShadow = i === 1 ? `0 12px 40px 0 rgba(255, 200, 1, 0.15)` : '0 12px 40px 0 rgba(0, 0, 0, 0.5)'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+                }}>
                 {i === 1 && <div style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', backgroundColor: C.forsythia, color: C.noir, fontSize: 11, fontWeight: 700, padding: '4px 16px', borderRadius: 20, fontFamily: 'JetBrains Mono, monospace', letterSpacing: 1 }}>MOST POPULAR</div>}
                 <p style={{ color: C.mint, fontFamily: 'Inter, sans-serif', fontSize: 13, marginBottom: 8 }}>{tier.name}</p>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
@@ -135,8 +211,8 @@ function PricingSection() {
                     </li>
                   ))}
                 </ul>
-                <button style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 14, fontWeight: 700, transition: 'opacity 180ms ease-out',
-                  backgroundColor: i === 1 ? C.forsythia : '#ffffff15',
+                <button style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 14, fontWeight: 700, transition: 'all 180ms ease-out',
+                  backgroundColor: i === 1 ? C.forsythia : 'rgba(255,255,255,0.1)',
                   color: i === 1 ? C.noir : '#fff' }}
                   onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
                   onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
@@ -150,8 +226,8 @@ function PricingSection() {
     </section>
   )
 }
- 
-// ── Bento → Accordion feature ─────────────────────────────────
+
+// ── Bento Grid / Accordion features ───────────────────────────
 const FEATURES = [
   { icon: 'arrow-trending-up', title: 'Predictive Analytics', desc: 'ML models that forecast pipeline trends and surface revenue risks before they become problems.', span: 'col' },
   { icon: 'arrow-path',        title: 'Workflow Automation', desc: 'Connect any tool, trigger any action. Build complex multi-step automations with zero code.', span: 'row' },
@@ -160,30 +236,18 @@ const FEATURES = [
   { icon: 'cube',              title: '3D Data Modeling',    desc: 'Visualize relationships between entities in interactive 3D space. Spot patterns invisible in flat tables.', span: '' },
   { icon: 'link',              title: 'API Mesh',            desc: 'Auto-generated GraphQL layer over every integration. One endpoint, all your data.', span: 'col' },
 ]
- 
+
 function BentoAccordion() {
   const [activeIndex, setActiveIndex] = useState(null)
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
-  const activeIndexRef = useRef(activeIndex)
- 
+  const [isMobile, setIsMobile] = useState(false)
+
   useEffect(() => {
-    activeIndexRef.current = activeIndex
-  }, [activeIndex])
- 
-  useEffect(() => {
-    const handler = () => {
-      const mobile = window.innerWidth < 768
-      const wasDesktop = !isMobile
-      setIsMobile(mobile)
-      // Context transfer: if switching desktop→mobile, carry active index
-      if (mobile && wasDesktop && activeIndexRef.current !== null) {
-        setActiveIndex(activeIndexRef.current)
-      }
-    }
+    setIsMobile(window.innerWidth < 768)
+    const handler = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handler)
     return () => window.removeEventListener('resize', handler)
-  }, [isMobile])
- 
+  }, [])
+
   if (isMobile) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -205,8 +269,7 @@ function BentoAccordion() {
       </div>
     )
   }
- 
-  // Desktop bento grid
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
       {FEATURES.map((f, i) => (
@@ -232,26 +295,59 @@ function BentoAccordion() {
     </div>
   )
 }
- 
+
 // ── Social proof ──────────────────────────────────────────────
 const TESTIMONIALS = [
   { name: 'Priya Sharma', role: 'CTO, Finstack', quote: 'NeuralFlow cut our data pipeline build time from 3 weeks to 2 days. The AI orchestration layer is genuinely magic.' },
   { name: 'Marcus Webb', role: 'VP Eng, Loopback', quote: 'We replaced 4 internal tools with NeuralFlow. Our team velocity is up 60% in the first quarter.' },
   { name: 'Aiko Tanaka', role: 'Data Lead, Synthex', quote: 'The predictive analytics surfaced a churn risk we would have missed entirely. Saved us ~$200k ARR.' },
 ]
- 
-// ── Main App ──────────────────────────────────────────────────
+
+// ── Main App Component ────────────────────────────────────────
 export default function App() {
-  const [menuOpen, setMenuOpen] = useState(false)
- 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        *, *::before, *::after { 
+          box-sizing: border-box; 
+          margin: 0; 
+          padding: 0; 
+          cursor: none; /* Hide default hardware pointer system-wide */
+        }
+        
         html { scroll-behavior: smooth; }
-        body { background: ${C.noir}; }
- 
+        body { background: ${C.noir}; overflow-x: hidden; }
+
+        /* Custom Glowing Cursor Properties */
+        .cursor {
+          width: 20px;
+          height: 20px;
+          background: #FFC801;
+          border-radius: 50%;
+          position: fixed;
+          pointer-events: none;
+          z-index: 9999;
+          transition: transform 0.1s ease-out;
+          mix-blend-mode: difference;
+          box-shadow: 0 0 20px #FFC801, 0 0 40px #FFC801;
+        }
+
+        /* Animated Mesh Gradient Keyframes */
+        @keyframes gradientShift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        .animated-hero {
+          background: linear-gradient(-45deg, #172B36, #114C5A, #0d1a1f, #1d3d47);
+          background-size: 400% 400%;
+          animation: gradientShift 15s ease infinite;
+        }
+
+        /* Hero Text Entrance Animations */
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(32px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -260,15 +356,52 @@ export default function App() {
         .hero-animate-1 { animation-delay: 80ms; }
         .hero-animate-2 { animation-delay: 180ms; }
         .hero-animate-3 { animation-delay: 280ms; }
- 
+
+        /* Infinite Scrolling Marquee Animation */
+        @keyframes marquee {
+          0% { transform: translateX(0%); }
+          100% { transform: translateX(-50%); }
+        }
+        .ticker-wrap {
+          width: 100%;
+          overflow: hidden;
+          background: #FFC801;
+          padding: 14px 0;
+          display: flex;
+          white-space: nowrap;
+          border-top: 1px solid rgba(0,0,0,0.1);
+          border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        .ticker-track {
+          display: flex;
+          gap: 40px;
+          animation: marquee 25s linear infinite;
+        }
+        .ticker-item {
+          font-family: 'JetBrains Mono', monospace;
+          font-weight: 700;
+          font-size: 14px;
+          color: #172B36;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+
         @media (max-width: 640px) {
           .nav-links { display: none !important; }
           .hero-title { font-size: clamp(32px, 8vw, 52px) !important; }
+          *, *::before, *::after { cursor: auto; } /* Restore cursor for mobile devices */
+          .cursor { display: none; }
         }
       `}</style>
- 
+
+      {/* Render custom cursor element */}
+      <CustomCursor />
+
       {/* ── NAVBAR ── */}
-      <header style={{ position: 'fixed', top: 0, width: '100%', zIndex: 100, backgroundColor: C.noir + 'ee', backdropFilter: 'blur(12px)', borderBottom: `1px solid #ffffff10` }}>
+      <header style={{ position: 'fixed', top: 0, width: '100%', zIndex: 100, backgroundColor: 'rgba(23, 43, 54, 0.8)', backdropFilter: 'blur(12px)', borderBottom: `1px solid rgba(255,255,255,0.06)` }}>
         <nav style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Icon name="cube" size={22} color={C.forsythia} />
@@ -284,7 +417,7 @@ export default function App() {
             ))}
           </ul>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button style={{ padding: '10px 22px', borderRadius: 10, border: `1px solid ${C.forsythia}`, backgroundColor: 'transparent', color: C.forsythia, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 180ms ease-out' }}
+            <button style={{ padding: '10px 22px', borderRadius: 10, border: `1px solid ${C.forsythia}`, backgroundColor: 'transparent', color: C.forsythia, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, fontWeight: 600, cursor: 'none', transition: 'all 180ms ease-out' }}
               onMouseEnter={e => { e.currentTarget.style.backgroundColor = C.forsythia; e.currentTarget.style.color = C.noir }}
               onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = C.forsythia }}>
               Get Started
@@ -292,19 +425,19 @@ export default function App() {
           </div>
         </nav>
       </header>
- 
+
       <main>
         {/* ── HERO ── */}
-        <header id="hero" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '120px 24px 80px', backgroundColor: C.noir, position: 'relative', overflow: 'hidden' }}>
-          {/* Background gradient orbs */}
-          <div style={{ position: 'absolute', width: 600, height: 600, borderRadius: '50%', background: `radial-gradient(circle, ${C.teal}40 0%, transparent 70%)`, top: '10%', left: '5%', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: `radial-gradient(circle, ${C.forsythia}20 0%, transparent 70%)`, bottom: '10%', right: '5%', pointerEvents: 'none' }} />
- 
-          <div className="hero-animate hero-animate-1" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, backgroundColor: C.teal, borderRadius: 20, padding: '6px 16px', marginBottom: 28 }}>
+        <header id="hero" className="animated-hero" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '120px 24px 80px', position: 'relative', overflow: 'hidden' }}>
+          {/* Background overlay blending factors */}
+          <div style={{ position: 'absolute', width: 600, height: 600, borderRadius: '50%', background: `radial-gradient(circle, ${C.teal}30 0%, transparent 70%)`, top: '10%', left: '5%', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: `radial-gradient(circle, ${C.forsythia}15 0%, transparent 70%)`, bottom: '10%', right: '5%', pointerEvents: 'none' }} />
+
+          <div className="hero-animate hero-animate-1" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, backgroundColor: 'rgba(17, 76, 90, 0.6)', backdropFilter: 'blur(4px)', borderRadius: 20, padding: '6px 16px', marginBottom: 28, border: '1px solid rgba(255,255,255,0.05)' }}>
             <Icon name="arrow-trending-up" size={14} color={C.forsythia} />
             <span style={{ color: C.forsythia, fontFamily: 'JetBrains Mono, monospace', fontSize: 12, fontWeight: 600, letterSpacing: 1 }}>AI-POWERED DATA AUTOMATION</span>
           </div>
- 
+
           <h1 className="hero-title hero-animate hero-animate-2"
             style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(36px,6vw,72px)', fontWeight: 700, lineHeight: 1.1, maxWidth: 900, marginBottom: 24 }}>
             Automate Everything.<br />
@@ -312,38 +445,60 @@ export default function App() {
               Move at Machine Speed.
             </span>
           </h1>
- 
+
           <p className="hero-animate hero-animate-3"
             style={{ color: C.mint, fontFamily: 'Inter, sans-serif', fontSize: 'clamp(16px,2vw,20px)', lineHeight: 1.7, maxWidth: 600, marginBottom: 48 }}>
             NeuralFlow is the AI automation platform that connects your data, tools, and workflows — so your team ships faster and your models work harder.
           </p>
- 
-          <div className="hero-animate hero-animate-3" style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button style={{ padding: '16px 36px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${C.forsythia}, ${C.saffron})`, color: C.noir, fontFamily: 'JetBrains Mono, monospace', fontSize: 15, fontWeight: 700, cursor: 'pointer', transition: 'opacity 180ms ease-out' }}
+
+          <div className="hero-animate hero-animate-3" style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 80 }}>
+            <button style={{ padding: '16px 36px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${C.forsythia}, ${C.saffron})`, color: C.noir, fontFamily: 'JetBrains Mono, monospace', fontSize: 15, fontWeight: 700, cursor: 'none', transition: 'opacity 180ms ease-out' }}
               onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
               onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
               Start Free Trial
             </button>
-            <button style={{ padding: '16px 36px', borderRadius: 12, border: `1px solid #ffffff25`, backgroundColor: 'transparent', color: '#fff', fontFamily: 'Inter, sans-serif', fontSize: 15, cursor: 'pointer', transition: 'border-color 180ms ease-out' }}
+            <button style={{ padding: '16px 36px', borderRadius: 12, border: `1px solid #ffffff25`, backgroundColor: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(8px)', color: '#fff', fontFamily: 'Inter, sans-serif', fontSize: 15, cursor: 'none', transition: 'border-color 180ms ease-out' }}
               onMouseEnter={e => e.currentTarget.style.borderColor = C.forsythia}
               onMouseLeave={e => e.currentTarget.style.borderColor = '#ffffff25'}>
               Watch Demo
             </button>
           </div>
- 
-          {/* Stats row */}
-          <div style={{ display: 'flex', gap: 48, marginTop: 80, flexWrap: 'wrap', justifyContent: 'center' }}>
-            {[['500M+', 'API calls daily'], ['99.99%', 'Uptime SLA'], ['10x', 'Faster deployment'], ['< 500ms', 'Time to Interactive']].map(([val, label]) => (
-              <div key={label} style={{ textAlign: 'center' }}>
-                <div style={{ color: C.forsythia, fontFamily: 'JetBrains Mono, monospace', fontSize: 28, fontWeight: 700 }}>{val}</div>
-                <div style={{ color: C.mint, fontFamily: 'Inter, sans-serif', fontSize: 13 }}>{label}</div>
+
+          {/* Stats Row with Live Counter Animations */}
+          <div style={{ display: 'flex', gap: 48, flexWrap: 'wrap', justifyContent: 'center', position: 'relative', zIndex: 2 }}>
+            {[
+              { val: 500, suffix: 'M+', label: 'API calls daily' },
+              { val: 99.99, suffix: '%', label: 'Uptime SLA', decimals: 2 },
+              { val: 10, suffix: 'x', label: 'Faster deployment' },
+              { val: 500, suffix: 'ms', label: 'Time to Interactive', prefix: '< ' }
+            ].map((stat, idx) => (
+              <div key={idx} style={{ textAlign: 'center', minWidth: 140 }}>
+                <div style={{ color: C.forsythia, fontFamily: 'JetBrains Mono, monospace', fontSize: 28, fontWeight: 700 }}>
+                  {stat.prefix || ''}
+                  <AnimatedCounter target={stat.val} suffix={stat.suffix} decimals={stat.decimals || 0} />
+                </div>
+                <div style={{ color: C.mint, fontFamily: 'Inter, sans-serif', fontSize: 13, marginTop: 4 }}>{stat.label}</div>
               </div>
             ))}
           </div>
         </header>
- 
-        {/* ── FEATURES (Bento/Accordion) ── */}
-        <section id="features" style={{ backgroundColor: C.noir, padding: '80px 24px' }}>
+
+        {/* ── SCROLLING TICKER MARQUEE ── */}
+        <div className="ticker-wrap">
+          <div className="ticker-track">
+            {[...Array(4)].map((_, outerIdx) => (
+              <div key={outerIdx} style={{ display: 'flex', gap: 40 }}>
+                <div className="ticker-item"><span>✦</span> MULTI-STEP AUTOMATION</div>
+                <div className="ticker-item"><span>✦</span> 99.99% RUNTIME SLA</div>
+                <div className="ticker-item"><span>✦</span> LLM OBSERVABILITY LAYER</div>
+                <div className="ticker-item"><span>✦</span> LIVE 3D DATA MODELING</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── FEATURES ── */}
+        <section id="features" style={{ backgroundColor: C.noir, padding: '100px 24px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <p style={{ color: C.forsythia, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 12 }}>Features</p>
             <h2 style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(26px,4vw,42px)', fontWeight: 700, textAlign: 'center', marginBottom: 12 }}>
@@ -355,12 +510,12 @@ export default function App() {
             <BentoAccordion />
           </div>
         </section>
- 
+
         {/* ── PRICING ── */}
         <PricingSection />
- 
+
         {/* ── TESTIMONIALS ── */}
-        <section id="testimonials" style={{ backgroundColor: C.teal, padding: '80px 24px' }}>
+        <section id="testimonials" style={{ backgroundColor: C.teal, padding: '100px 24px' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <p style={{ color: C.forsythia, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, letterSpacing: 3, textTransform: 'uppercase', textAlign: 'center', marginBottom: 12 }}>Social Proof</p>
             <h2 style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(26px,4vw,42px)', fontWeight: 700, textAlign: 'center', marginBottom: 56 }}>
@@ -368,7 +523,7 @@ export default function App() {
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
               {TESTIMONIALS.map((t, i) => (
-                <div key={i} style={{ backgroundColor: '#ffffff10', borderRadius: 20, padding: '32px 28px', border: '1px solid #ffffff15', transition: 'transform 200ms ease-out' }}
+                <div key={i} style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 20, padding: '32px 28px', border: '1px solid rgba(255,255,255,0.1)', transition: 'transform 200ms ease-out' }}
                   onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'}
                   onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
                   <div style={{ color: C.forsythia, fontSize: 28, marginBottom: 16 }}>❝</div>
@@ -383,9 +538,9 @@ export default function App() {
           </div>
         </section>
       </main>
- 
+
       {/* ── FOOTER ── */}
-      <footer style={{ backgroundColor: '#0d1a1f', padding: '40px 24px', textAlign: 'center', borderTop: `1px solid #ffffff10` }}>
+      <footer style={{ backgroundColor: '#0d1a1f', padding: '40px 24px', textAlign: 'center', borderTop: `1px solid rgba(255,255,255,0.06)` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
           <Icon name="cube" size={18} color={C.forsythia} />
           <span style={{ color: '#fff', fontFamily: 'JetBrains Mono, monospace', fontSize: 16, fontWeight: 700 }}>NeuralFlow</span>
